@@ -14,13 +14,14 @@
     provisioned with this script will accept this password.
 
 .PARAMETER ServerHost
-    Address of the self-hosted rendezvous/relay server (hbbs/hbbr), e.g. a
-    school-controlled VPS. If omitted, the client uses RustDesk's public
-    servers instead.
+    Address of the self-hosted rendezvous/relay server (hbbs/hbbr). Defaults
+    to the school's own VPS; pass -ServerHost '' to fall back to RustDesk's
+    public servers instead.
 
 .PARAMETER ServerKey
     The hbbs server's public key (from its data/id_ed25519.pub), required
-    alongside -ServerHost so the client trusts it.
+    alongside -ServerHost so the client trusts it. Defaults to match the
+    default -ServerHost.
 
 .NOTES
     Must be run elevated (as Administrator) — RustDesk's --password and
@@ -34,9 +35,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PermanentPassword,
 
-    [string]$ServerHost,
+    [string]$ServerHost = "87.106.61.188",
 
-    [string]$ServerKey
+    [string]$ServerKey = "2TYw2+zjkMv8OF+S2WJ4sNcZRBC6g8fMYsNF4kul37E="
 )
 
 if ($ServerHost -and -not $ServerKey) {
