@@ -58,6 +58,15 @@ fn make_tray() -> hbb_common::ResultType<()> {
         let rgba = image.into_raw();
         (rgba, width, height)
     };
+    // Built before `icon_rgba` is moved below; used to swap the tray icon to a
+    // "connected" state instead of popping up a notification when a session starts.
+    #[cfg(windows)]
+    let icon_active = tray_icon::Icon::from_rgba(
+        make_active_icon_rgba(&icon_rgba, icon_width, icon_height),
+        icon_width,
+        icon_height,
+    )
+    .context("Failed to build active tray icon")?;
     let icon = tray_icon::Icon::from_rgba(icon_rgba, icon_width, icon_height)
         .context("Failed to open icon")?;
 
@@ -250,11 +259,15 @@ fn make_tray() -> hbb_common::ResultType<()> {
         if let Ok(data) = ipc_receiver.try_recv() {
             match data {
                 Data::ControlledSessionCount(count) => {
-                    _tray_icon
-                        .lock()
-                        .unwrap()
-                        .as_mut()
-                        .map(|t| t.set_tooltip(Some(tooltip(count))));
+                    _tray_icon.lock().unwrap().as_mut().map(|t| {
+                        t.set_tooltip(Some(tooltip(count)));
+                        t.set_icon(Some(if count > 0 {
+                            icon_active.clone()
+                        } else {
+                            icon.clone()
+                        }))
+                        .ok();
+                    });
                 }
                 _ => {}
             }
@@ -296,6 +309,29 @@ async fn start_query_session_count(sender: std::sync::mpsc::Sender<Data>) {
         }
         hbb_common::sleep(1.).await;
     }
+}
+
+// Badges a solid green dot in the corner of the base tray icon, so an active
+// session is visible at a glance (like a presence indicator) without any
+// popup/toast stealing focus.
+#[cfg(windows)]
+fn make_active_icon_rgba(rgba: &[u8], width: u32, height: u32) -> Vec<u8> {
+    let Some(mut img) = image::RgbaImage::from_raw(width, height, rgba.to_vec()) else {
+        return rgba.to_vec();
+    };
+    let radius = (width.min(height) as f32 * 0.32) as i32;
+    let cx = width as i32 - radius - 1;
+    let cy = height as i32 - radius - 1;
+    for y in 0..height as i32 {
+        for x in 0..width as i32 {
+            let dx = x - cx;
+            let dy = y - cy;
+            if dx * dx + dy * dy <= radius * radius {
+                img.put_pixel(x as u32, y as u32, image::Rgba([0, 200, 83, 255]));
+            }
+        }
+    }
+    img.into_raw()
 }
 
 fn load_icon_from_asset() -> Option<image::DynamicImage> {
